@@ -4,6 +4,32 @@ const server = express();
 // MIDDLEWARES
 server.use(express.json());
 
+// === VALIDAR AUTOR ===
+const validarAutor = (req,res,next) => {
+    const autor_id = req.params.id;
+    const autor_ok = BIBLIOGRAFIA.find(autor => autor.id == autor_id);
+    console.log(autor_ok);
+    if (!autor_ok) {
+        res.status(400).json({error: `Autor con id ${autor_ok} no existe.`});
+    } else {
+        next();
+    };
+};
+
+// === VALIDAR LIBRO ===
+const validarLibro = (req,res,next) => {
+    // Acá no importa validar autor_id porque ya lo hizo el middleware anterior
+    const autor_id = req.params.id;
+    const id_libro = req.params.idLibro;
+    const autor_ok = BIBLIOGRAFIA.find(autor => autor.id == autor_id);
+    const libro_ok = autor_ok.libros.find(libro => libro.id == id_libro);
+    if (!libro_ok) {
+        res.status(400).json({error: `Libro con id ${autor_ok} no existe.`});
+    } else {
+        next();
+    }
+}
+
 // VARIABLES
 const PORT = 3000;
 const BIBLIOGRAFIA = [
@@ -72,13 +98,49 @@ const BIBLIOGRAFIA = [
 // =========== ROUTING ============
 // traer todos los autores y todos sus libros
 server.get('/', (req,res) => {
-    console.log("GET ALL")
+    console.log("GET ALL");
     res.status(200).json(BIBLIOGRAFIA);
 });
 
+// ====> /autores/:id/libros
+// GET --> devuelve todos los libros según un autor
+server.get('/autores/:id/libros', validarAutor,(req,res) => {
+    const autor_id = req.params.id;
+    const autor_ok = BIBLIOGRAFIA.find(autor => autor.id == autor_id);
+    res.status(200).json(autor_ok.libros);
+});
+
+// POST --> agrega un nuevo libro al autor
+server.post('/autores/:id/libros', validarAutor, (req,res) => {
+    const autor_id = req.params.id;
+    const autor_ok = BIBLIOGRAFIA.find(autor => autor.id == autor_id);
+    const NUEVO_LIBRO = {
+        id: autor_ok.libros.length + 1,
+        titulo: req.body.titulo,
+        año: req.body.año,
+        descripcion: req.body.descripcion
+    };
+    autor_ok.libros.push(NUEVO_LIBRO);
+    res.status(200).json(NUEVO_LIBRO);
+});
+
+// ====> /autores/:id/libros:idLibro
+// GET --> devuelve libro con el id indicado del autor
+server.get('/autores/:id/libros/:idLibro', validarAutor, validarLibro, (req,res) => {
+    const autor_id = req.params.id;
+    const autor_ok = BIBLIOGRAFIA.find(autor => autor.id == autor_id);
+    const libro_id = req.params.idLibro;
+    const libro_ok = autor_ok.libros.find(libro => libro.id == libro_id);
+    res.status(200).json(libro_ok);
+});
+
+// PUT --> modifica el libro con el id indicado del autor
+
+
+// DELETE --> elimina el libro con el id indicado del autor
 
 
 // ========== PORT =============
 server.listen(PORT, () => {
     console.log(`Servidor iniciado en el puerto ${PORT}`);
-})
+});
